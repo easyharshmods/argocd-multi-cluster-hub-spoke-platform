@@ -12,9 +12,11 @@ replicas:
   - name: dagster-daemon
     count: 1
 
+# Replace AWS_ACCOUNT_ID and AWS_REGION before applying:
+#   envsubst < kustomization.yaml | kubectl apply -f -
 images:
   - name: dagster-user-code
-    newName: ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/dagster-user-code
+    newName: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/dagster-user-code
     newTag: staging-latest
 
 configMapGenerator:

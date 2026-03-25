@@ -23,14 +23,13 @@ WORKDIR /opt/dagster/app
 # pip install --user puts scripts in ~/.local/bin; Helm runs "dagster" CLI so it must be on PATH
 ENV PATH="/home/dagster/.local/bin:$PATH"
 
-# Install Python dependencies
-COPY --chown=dagster:dagster requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Copy dependency metadata first (cache layer)
+COPY --chown=dagster:dagster pyproject.toml setup.py* ./
 
 # Copy application code
 COPY --chown=dagster:dagster . .
 
-# Install the package
+# Install the package and all dependencies
 RUN pip install --no-cache-dir --user -e .
 
 # Health check
