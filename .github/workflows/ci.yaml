@@ -1,0 +1,153 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      bootstrap: ${{ steps.filter.outputs.bootstrap }}
+      infrastructure: ${{ steps.filter.outputs.infrastructure }}
+      platform: ${{ steps.filter.outputs.platform }}
+      applications: ${{ steps.filter.outputs.applications }}
+      gitops: ${{ steps.filter.outputs.gitops }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            bootstrap:
+              - 'bootstrap/**'
+            infrastructure:
+              - 'infrastructure/**'
+            platform:
+              - 'platform/**'
+            applications:
+              - 'applications/**'
+            gitops:
+              - 'gitops/**'
+
+  validate-bootstrap:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bootstrap == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate
+        working-directory: bootstrap/terraform-backend
+        run: |
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check
+
+  validate-infrastructure:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infrastructure == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir:
+          - infrastructure/shared
+          - infrastructure/hub
+          - infrastructure/spokes/dev
+          - infrastructure/spokes/staging
+          - infrastructure/spokes/prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate ${{ matrix.dir }}
+        working-directory: ${{ matrix.dir }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check -recursive
+
+  validate-platform:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.platform == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+
+      - name: Validate YAML syntax
+        run: |
+          for f in $(find platform -name '*.yaml' -o -name '*.yml'); do
+            python3 -c "import yaml; list(yaml.safe_load_all(open('$f')))" || exit 1
+          done
+
+      - name: Validate Kustomize overlays
+        run: |
+          for env in dev staging prod; do
+            echo "Validating ${env}..."
+            kubectl kustomize platform/dagster/overlays/${env} > /dev/null
+          done
+
+  validate-applications:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.applications == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install and lint
+        working-directory: applications/dagster-project
+        run: |
+          pip install ruff pytest
+          pip install -e ".[dev]" 2>/dev/null || pip install -e .
+      - name: Ruff
+        working-directory: applications/dagster-project
+        run: ruff check .
+      - name: Test
+        working-directory: applications/dagster-project
+        run: pytest tests/ -v
+
+  validate-gitops:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.gitops == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate ArgoCD applications
+        run: |
+          for f in $(find gitops -name '*.yaml'); do
+            echo "Validating: $f"
+            python3 -c "
+          import yaml
+          doc = yaml.safe_load(open('$f'))
+          kind = doc.get('kind', '')
+          if kind == 'Application':
+              assert doc.get('apiVersion', '').startswith('argoproj.io/')
+              print(f'  OK: {doc[\"metadata\"][\"name\"]}')
+          " || exit 1
+          done
+
+  deploy-prod:
+    needs: [validate-infrastructure, validate-platform, validate-applications]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://dagster.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync ArgoCD
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          ./argocd login argocd.example.com \
+            --username admin \
+            --password ${{ secrets.ARGOCD_PASSWORD }}
+          ./argocd app sync dagster-prod --prune
+          ./argocd app wait dagster-prod --timeout 600

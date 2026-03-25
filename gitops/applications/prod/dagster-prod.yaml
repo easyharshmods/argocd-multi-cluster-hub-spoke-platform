@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dagster-prod
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: platform-prod-alerts
+    notifications.argoproj.io/subscribe.on-health-degraded.pagerduty: platform-oncall
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/YOUR_ORG/dagster-platform
+    targetRevision: v1.2.3
+    path: platform/dagster/overlays/prod
+
+  destination:
+    name: dagster-prod
+    namespace: dagster
+
+  # Manual approval required for prod
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true

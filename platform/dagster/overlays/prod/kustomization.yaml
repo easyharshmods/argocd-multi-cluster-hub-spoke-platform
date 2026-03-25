@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dagster
+
+resources:
+  - ../../base
+  - resource-quota.yaml
+  - limit-range.yaml
+
+replicas:
+  - name: dagster-webserver
+    count: 3
+  - name: dagster-daemon
+    count: 2
+
+images:
+  - name: dagster-user-code
+    newName: ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/dagster-user-code
+    newTag: v1.2.3
+
+configMapGenerator:
+  - name: dagster-config
+    literals:
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+
+commonLabels:
+  environment: production

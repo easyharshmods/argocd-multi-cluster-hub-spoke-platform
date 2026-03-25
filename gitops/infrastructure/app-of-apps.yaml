@@ -1,0 +1,22 @@
+# App-of-apps pattern for managing all spoke applications
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spoke-applications
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/YOUR_ORG/dagster-platform
+    targetRevision: main
+    path: gitops
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

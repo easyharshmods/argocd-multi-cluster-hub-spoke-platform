@@ -1,0 +1,14 @@
+# Metrics Server Helm values
+replicas: 1
+
+args:
+  - "--kubelet-preferred-address-types=InternalIP"
+  - "--kubelet-use-node-status-port"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

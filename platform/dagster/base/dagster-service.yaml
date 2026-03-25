@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dagster-webserver
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    component: dagster-webserver
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-code
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3030
+    targetPort: 3030
+    protocol: TCP
+  selector:
+    component: user-code

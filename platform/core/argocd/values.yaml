@@ -1,0 +1,86 @@
+# ArgoCD hub configuration for multi-cluster management
+
+server:
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      external-dns.alpha.kubernetes.io/hostname: argocd.example.com
+    hosts:
+      - argocd.example.com
+
+  # Enable multi-cluster metrics
+  metrics:
+    enabled: true
+
+  # RBAC for spoke clusters
+  rbacConfig:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:spoke-deployer, applications, *, */*, allow
+      p, role:spoke-deployer, clusters, get, *, allow
+      g, spoke-service-account, role:spoke-deployer
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+configs:
+  params:
+    server.insecure: true
+    application.instanceLabelKey: argocd.argoproj.io/instance
+
+  # Repository credentials
+  repositories:
+    - url: https://github.com/YOUR_ORG/dagster-platform
+      type: git
+      name: platform-repo
+
+  # Secret for spoke registration
+  secret:
+    createSecret: true
+
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+applicationSet:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+notifications:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

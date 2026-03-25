@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dagster-project"
+version = "1.0.0"
+description = "Dagster data orchestration project"
+requires-python = ">=3.12"
+
+dependencies = [
+    "dagster>=1.12.14",
+    "dagster-webserver>=1.12.14",
+    "dagster-k8s>=0.28.14",
+    "dagster-postgres>=0.28.14",
+    "dagster-aws>=0.28.14",
+    "pandas>=2.2.3",
+    "requests>=2.32.3",
+    "psycopg2-binary>=2.9.10",
+    "boto3>=1.35.90",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-instrumentation>=0.48b0",
+    "opentelemetry-instrumentation-requests>=0.48b0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "black>=24.0.0",
+    "ruff>=0.7.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"

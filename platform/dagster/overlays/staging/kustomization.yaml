@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dagster
+
+resources:
+  - ../../base
+
+replicas:
+  - name: dagster-webserver
+    count: 2
+  - name: dagster-daemon
+    count: 1
+
+images:
+  - name: dagster-user-code
+    newName: ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/dagster-user-code
+    newTag: staging-latest
+
+configMapGenerator:
+  - name: dagster-config
+    literals:
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+
+commonLabels:
+  environment: staging

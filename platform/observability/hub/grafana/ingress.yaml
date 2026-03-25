@@ -1,0 +1,38 @@
+# Ingress for Grafana - ALB with TLS (ACM) and Cognito.
+# REPLACE_GRAFANA_FQDN, REPLACE_ACM_ARN, REPLACE_COGNITO_* are replaced by scripts/deploy-hub.sh.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: REPLACE_ACM_ARN
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    # Cognito authentication
+    alb.ingress.kubernetes.io/auth-type: cognito
+    alb.ingress.kubernetes.io/auth-idp-cognito: '{"UserPoolArn":"REPLACE_COGNITO_USER_POOL_ARN","UserPoolClientId":"REPLACE_COGNITO_CLIENT_ID_GRAFANA","UserPoolDomain":"REPLACE_COGNITO_DOMAIN"}'
+    alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
+    alb.ingress.kubernetes.io/auth-scope: openid
+    alb.ingress.kubernetes.io/auth-session-timeout: "86400"
+spec:
+  ingressClassName: alb
+  rules:
+    - host: REPLACE_GRAFANA_FQDN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - REPLACE_GRAFANA_FQDN
+      secretName: grafana-tls

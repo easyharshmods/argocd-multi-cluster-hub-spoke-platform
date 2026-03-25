@@ -1,0 +1,38 @@
+# Ingress for Dagster webserver - ALB with TLS (ACM) and Cognito.
+# REPLACE_* are replaced by scripts/deploy-spoke.sh (FQDN, ACM, webserver service name, Cognito).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dagster-webserver
+  namespace: dagster
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: REPLACE_ACM_ARN
+    alb.ingress.kubernetes.io/healthcheck-path: /server_info
+    # Cognito authentication
+    alb.ingress.kubernetes.io/auth-type: cognito
+    alb.ingress.kubernetes.io/auth-idp-cognito: '{"UserPoolArn":"REPLACE_COGNITO_USER_POOL_ARN","UserPoolClientId":"REPLACE_COGNITO_CLIENT_ID_DAGSTER","UserPoolDomain":"REPLACE_COGNITO_DOMAIN"}'
+    alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
+    alb.ingress.kubernetes.io/auth-scope: openid
+    alb.ingress.kubernetes.io/auth-session-timeout: "86400"
+spec:
+  ingressClassName: alb
+  rules:
+    - host: REPLACE_DAGSTER_FQDN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: REPLACE_WEBSERVER_SERVICE_NAME
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - REPLACE_DAGSTER_FQDN
+      secretName: dagster-tls

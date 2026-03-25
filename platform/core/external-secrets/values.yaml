@@ -1,0 +1,38 @@
+# External Secrets Operator Helm values
+installCRDs: true
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 100m
+    memory: 256Mi
+
+# SA annotation for IRSA is set via --set in apply.sh
+serviceAccount:
+  create: true
+  name: external-secrets
+
+# Webhook for validation
+webhook:
+  create: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+certController:
+  create: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

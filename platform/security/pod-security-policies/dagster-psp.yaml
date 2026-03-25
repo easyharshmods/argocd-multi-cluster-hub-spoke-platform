@@ -1,0 +1,10 @@
+# Pod Security Standards for Dagster workloads
+# Enforces restricted security context
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dagster
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

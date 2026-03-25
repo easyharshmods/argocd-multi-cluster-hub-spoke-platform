@@ -1,0 +1,120 @@
+# kube-prometheus-stack Helm values (demo sizing)
+# Includes Prometheus, Grafana, Alertmanager, kube-state-metrics, node-exporter
+
+# ─── Prometheus ──────────────────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    # No PVC for demo: avoids Pending on clusters without default StorageClass or capacity
+    storageSpec: {}
+    # Scrape all ServiceMonitors in all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+# ─── Grafana ─────────────────────────────────────────────────────────────────
+grafana:
+  enabled: true
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  # Give Grafana time to start before probes (avoids CrashLoopBackOff on slow start)
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  livenessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 10
+  # Admin password (change after first login)
+  adminPassword: "dagster-admin"
+  # Datasource: Prometheus (auto-configured by stack, but explicit here for clarity)
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://kube-prometheus-stack-prometheus.monitoring:9090
+          access: proxy
+          isDefault: true
+          editable: false
+  # Sidecar for dashboards from ConfigMaps (datasources sidecar disabled to avoid two default datasources)
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: false
+  # No plugins at startup (GF_INSTALL_PLUGINS can cause startup failure in restricted environments)
+  plugins: []
+
+# ─── Alertmanager ────────────────────────────────────────────────────────────
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    storage: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# ─── kube-state-metrics ─────────────────────────────────────────────────────
+kubeStateMetrics:
+  enabled: true
+
+# ─── node-exporter ──────────────────────────────────────────────────────────
+nodeExporter:
+  enabled: true
+
+# ─── Default rules (CPU, memory, node, pod alerts) ─────────────────────────
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8sContainerCpuUsageSecondsTotal: true
+    k8sContainerMemoryCache: true
+    k8sContainerMemoryRss: true
+    k8sContainerMemorySwap: true
+    k8sContainerMemoryWorkingSetBytes: true
+    k8sPodOwner: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: true
+    kubeSchedulerRecording: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true

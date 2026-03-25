@@ -1,0 +1,124 @@
+# Dagster Helm values - demo sizing, RDS via secret, user code from applications/dagster-project
+# ECR image and RDS secret are injected by scripts/deploy-spoke.sh using infrastructure/shared outputs
+
+global:
+  dagsterHome: "/opt/dagster/dagster_home"
+  # PostgreSQL secret created by ExternalSecret from infrastructure/shared RDS
+  postgresqlSecretName: "dagster-postgresql-secret"
+
+# Webserver - demo sizing per spec
+# Use dagster-k8s image (daemon/webserver are not separate images on Docker Hub)
+dagsterWebserver:
+  replicaCount: 2
+  image:
+    repository: dagster/dagster-k8s
+    tag: "1.12.14"
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 80
+  workspace:
+    enabled: true
+    servers:
+      # Point the webserver at the user-code gRPC server so a code location appears in the UI
+      - host: user-code
+        port: 3030
+        name: user-code
+    externalConfigmap: ~
+  env: []
+  envSecrets:
+    - name: dagster-postgresql-secret
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  checkDbReadyInitContainer: true
+
+# Daemon - demo sizing (same dagster-k8s image as webserver, different command)
+dagsterDaemon:
+  enabled: true
+  image:
+    repository: dagster/dagster-k8s
+    tag: "1.12.14"
+    pullPolicy: Always
+  envSecrets:
+    - name: dagster-postgresql-secret
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  checkDbReadyInitContainer: true
+
+# User code deployment - image set by deploy script (scripts/deploy-spoke.sh)
+dagster-user-deployments:
+  enabled: true
+  enableSubchart: true
+  imagePullSecrets:
+    - name: dagster-ecr-pull
+  deployments:
+    - name: user-code
+      image:
+        # Overridden by --set in scripts/deploy-spoke.sh from IMAGE_URI
+        repository: dagster/user-code-example
+        tag: latest
+        pullPolicy: Always
+      dagsterApiGrpcArgs:
+        - "-m"
+        - "dagster_project"
+      port: 3030
+      env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://adot-collector-collector.observability.svc.cluster.local:4317"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_SERVICE_NAME
+          value: "dagster-user-code"
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.namespace=dagster,service.name=dagster-user-code"
+        - name: OTEL_TRACES_SAMPLER
+          value: "parentbased_always_on"
+      envSecrets:
+        - name: dagster-postgresql-secret
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
+# External PostgreSQL (RDS from infrastructure/shared); host/user/db set in scripts/deploy-spoke.sh
+generatePostgresqlPasswordSecret: false
+postgresql:
+  enabled: false
+  postgresqlHost: ""
+  postgresqlUsername: ""
+  postgresqlPassword: ""
+  postgresqlDatabase: ""
+
+# Run launcher: K8s
+runLauncher:
+  type: K8sRunLauncher
+  config:
+    k8sRunLauncher:
+      imagePullPolicy: Always
+      jobImagePullPolicy: Always
+      loadInclusterConfig: true
+      failPodOnRunFailure: false
+      runK8sConfig:
+        containerConfig:
+          imagePullPolicy: Always
+
+scheduler:
+  type: DagsterDaemonScheduler
+  config: {}
+
+computeLogManager:
+  type: NoOpComputeLogManager
+  config: {}

@@ -1,0 +1,40 @@
+# Official kubernetes-sigs/external-dns Helm chart
+# https://artifacthub.io/packages/helm/external-dns/external-dns
+# Uses image: registry.k8s.io/external-dns/external-dns (default, pullable from EKS)
+
+provider:
+  name: aws
+
+# AWS region (IRSA uses this; set via env in apply.sh)
+env: []
+
+# Domain filter - only manage this domain
+domainFilters: []
+
+# Sync policy: sync = create + delete, upsert-only = create/update only
+policy: sync
+
+# TXT registry for ownership
+registry: txt
+txtOwnerId: ""
+txtPrefix: "ext-dns-"
+
+# Sources to watch
+sources:
+  - service
+  - ingress
+
+# AWS: public hosted zones only (set via extraArgs in apply.sh)
+extraArgs: {}
+
+# Service account annotations (IRSA role ARN set in apply.sh)
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations: {}
+
+# Logging
+logLevel: info
+logFormat: text
+
+interval: 1m

@@ -1,0 +1,29 @@
+# Dagster core
+dagster==1.12.14
+dagster-webserver==1.12.14
+dagster-k8s==0.28.14
+dagster-postgres==0.28.14
+dagster-aws==0.28.14
+
+# Data processing
+pandas==2.2.3
+requests==2.32.3
+
+# Database
+psycopg2-binary==2.9.10
+
+# AWS
+boto3==1.35.90
+
+# Testing
+pytest==8.3.4
+pytest-cov==6.0.0
+
+# Utilities
+python-dotenv==1.0.1
+
+# OpenTelemetry (traces → ADOT collector → AWS X-Ray)
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+opentelemetry-instrumentation==0.48b0
+opentelemetry-instrumentation-requests==0.48b0

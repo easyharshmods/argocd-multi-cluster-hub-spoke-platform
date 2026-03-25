@@ -1,0 +1,58 @@
+# Base Dagster deployment (parameterized via Kustomize overlays)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dagster-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: dagster-webserver
+  template:
+    metadata:
+      labels:
+        component: dagster-webserver
+    spec:
+      containers:
+      - name: dagster-webserver
+        image: dagster/dagster-k8s:1.12.14
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DAGSTER_HOME
+          value: /opt/dagster/dagster_home
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dagster-daemon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: dagster-daemon
+  template:
+    metadata:
+      labels:
+        component: dagster-daemon
+    spec:
+      containers:
+      - name: dagster-daemon
+        image: dagster/dagster-k8s:1.12.14
+        env:
+        - name: DAGSTER_HOME
+          value: /opt/dagster/dagster_home
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

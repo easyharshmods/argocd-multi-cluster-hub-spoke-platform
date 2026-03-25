@@ -1,0 +1,60 @@
+# Fluent Bit (AWS for Fluent Bit) - container logs → CloudWatch Logs
+# Region, log group, and role ARN are set in apply.sh from infrastructure/shared outputs
+
+image:
+  repository: public.ecr.aws/aws-observability/aws-for-fluent-bit
+  tag: "3.2.1"
+  pullPolicy: IfNotPresent
+
+# Tail container logs from all pods
+input:
+  enabled: true
+  tag: "kube.*"
+  path: "/var/log/containers/*.log"
+  db: "/var/log/flb_kube.db"
+  multilineParser: "docker, cri"
+  memBufLimit: 5MB
+  skipLongLines: "On"
+  refreshInterval: 10
+
+# Enrich with Kubernetes metadata (namespace, pod, container)
+filter:
+  enabled: true
+  match: "kube.*"
+  kubeURL: "https://kubernetes.default.svc.cluster.local:443"
+  mergeLog: "On"
+  mergeLogKey: "data"
+  keepLog: "On"
+  k8sLoggingParser: "On"
+  k8sLoggingExclude: "On"
+  bufferSize: "32k"
+
+# CloudWatch Logs output (log group/region/roleArn set in apply.sh)
+cloudWatch:
+  enabled: false
+
+cloudWatchLogs:
+  enabled: true
+  match: "*"
+  # region, logGroupName, roleArn set via --set in apply.sh
+  logStreamPrefix: "containers-"
+  autoCreateGroup: false
+  # Optional: uncomment to create one log group per namespace
+  # logGroupTemplate: "/aws/eks/CLUSTER_NAME/workload/$kubernetes['namespace_name']"
+  # logStreamTemplate: "$kubernetes['pod_name'].$kubernetes['container_name']"
+
+# ServiceAccount created by apply.sh with IRSA annotation
+serviceAccount:
+  create: false
+  name: fluent-bit
+
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# DaemonSet runs on each node
+updateStrategy:
+  type: RollingUpdate

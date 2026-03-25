@@ -1,0 +1,24 @@
+# AWS Load Balancer Controller Helm values
+# clusterName, region, vpcId, and serviceAccount are set via --set in apply.sh
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# The SA is created manually with IRSA annotation before chart install
+serviceAccount:
+  create: false
+  name: aws-load-balancer-controller
+
+# Enable shield, waf, wafv2 if needed (disabled for demo)
+enableShield: false
+enableWaf: false
+enableWafv2: false
+
+# Default IngressClass
+defaultIngressClass: true
